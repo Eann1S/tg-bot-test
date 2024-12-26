@@ -1,30 +1,49 @@
+import { ConversationFlavor, conversations } from "@grammyjs/conversations";
 import dotenv from "dotenv";
-import { Bot, GrammyError, HttpError } from "grammy";
+import {
+  Bot,
+  Context,
+  GrammyError,
+  HttpError,
+  session,
+  SessionFlavor,
+} from "grammy";
+import handleStart from "./bot/start";
 
 dotenv.config();
 
-const bot = new Bot(process.env.BOT_TOKEN as string);
+type SessionData = {
+  amount: number;
+  comment: string;
+};
 
-async function main() {
-  bot.command("start", (ctx) => {
-    ctx.reply("Welcome!");
-  });
+export type CustomContext = Context & SessionFlavor<SessionData> & ConversationFlavor;
 
-  bot.command("help", (ctx) =>
-    ctx.reply(
-      "Available commands:\n" +
-        "/start - Start the bot\n" +
-        "/help - Show this help message\n" +
-        "/webapp - Open the Mini App"
-    )
+const bot = new Bot<CustomContext>(process.env.BOT_TOKEN as string);
+
+bot.use(session({ initial: () => ({ amount: 0, comment: "" }) }));
+bot.use(conversations());
+
+export async function main() {
+  bot.command("start", handleStart);
+
+  bot.command(
+    "help",
+    async (ctx) =>
+      await ctx.reply(
+        "Available commands:\n" +
+          "/start - Start the bot\n" +
+          "/help - Show this help message\n" +
+          "/webapp - Open the Mini App"
+      )
   );
 
-  bot.command("webapp", (ctx) => {
+  bot.command("webapp", async (ctx) => {
     const WEBAPP_URL = process.env.WEBAPP_URL;
     if (!WEBAPP_URL) {
-      ctx.reply("Webapp currently unavailable");
+      await ctx.reply("Webapp currently unavailable");
     } else {
-      ctx.reply("Open Web App", {
+      await ctx.reply("Open Web App", {
         reply_markup: {
           inline_keyboard: [
             [{ text: "Open App", web_app: { url: WEBAPP_URL } }],
@@ -49,24 +68,24 @@ async function main() {
     },
   ]);
 
+  bot.catch((err) => {
+    const ctx = err.ctx;
+    console.error(`Error while handling update ${ctx.update.update_id}:`);
+    const e = err.error;
+    if (e instanceof GrammyError) {
+      console.error("Error in request:", e.description);
+    } else if (e instanceof HttpError) {
+      console.error("Could not contact Telegram:", e);
+    } else {
+      console.error("Unknown error:", e);
+    }
+  });
+
+  process.once("SIGINT", () => bot.stop());
+  process.once("SIGTERM", () => bot.stop());
+
   console.log("Starting bot...");
   await bot.start();
 }
-
-bot.catch((err) => {
-  const ctx = err.ctx;
-  console.error(`Error while handling update ${ctx.update.update_id}:`);
-  const e = err.error;
-  if (e instanceof GrammyError) {
-    console.error("Error in request:", e.description);
-  } else if (e instanceof HttpError) {
-    console.error("Could not contact Telegram:", e)
-  } else {
-    console.error("Unknown error:", e)
-  }
-})
-
-process.once("SIGINT", () => bot.stop());
-process.once("SIGTERM", () => bot.stop());
 
 main();
