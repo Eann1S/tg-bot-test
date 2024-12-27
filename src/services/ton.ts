@@ -15,7 +15,7 @@ export async function verifyThatTransactionExists(
   });
 
   const transactions = await httpClient.getTransactions(
-    Address.parseRaw(toWalletAddress),
+    Address.parse(toWalletAddress),
     {
       limit: 100,
     }
@@ -45,13 +45,11 @@ export async function generatePaymentLink(
   toWalletAddress: string,
   amount: number,
   comment: string,
-  app: "tonhub"
+  app: "tonkeeper"
 ) {
   const nanoAmount = toNano(amount);
   switch (app) {
-    case "tonhub":
-      return `https://tonhub.com/transfer/${toWalletAddress}?amount=${nanoAmount}&text=${comment}`;
-    default:
-      return undefined;
+    case "tonkeeper":
+      return `https://app.tonkeeper.com/transfer/${toWalletAddress}?amount=${nanoAmount}&text=${comment}`;
   }
 }

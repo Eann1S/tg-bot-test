@@ -5,9 +5,7 @@ export default async function handleStart(ctx: CustomContext) {
   const menu = new InlineKeyboard().text("Buy something :)", "buy").row();
 
   await ctx.reply(
-    `Hello!
-    Welcome to this telegram bot
-        `,
+    `Hello!\n Welcome to this telegram bot`,
     { reply_markup: menu, parse_mode: "Markdown" }
   );
 }

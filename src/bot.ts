@@ -1,4 +1,4 @@
-import { ConversationFlavor, conversations } from "@grammyjs/conversations";
+import { ConversationFlavor, conversations, createConversation } from "@grammyjs/conversations";
 import dotenv from "dotenv";
 import {
   Bot,
@@ -9,6 +9,8 @@ import {
   SessionFlavor,
 } from "grammy";
 import handleStart from "./bot/start";
+import handlePayment from "./bot/payment";
+import checkTransaction from "./bot/check.transaction";
 
 dotenv.config();
 
@@ -17,15 +19,23 @@ type SessionData = {
   comment: string;
 };
 
-export type CustomContext = Context & SessionFlavor<SessionData> & ConversationFlavor;
+export type CustomContext = Context &
+  SessionFlavor<SessionData> &
+  ConversationFlavor;
 
 const bot = new Bot<CustomContext>(process.env.BOT_TOKEN as string);
 
 bot.use(session({ initial: () => ({ amount: 0, comment: "" }) }));
 bot.use(conversations());
+bot.use(createConversation(handlePayment))
 
 export async function main() {
   bot.command("start", handleStart);
+  bot.callbackQuery(
+    "buy",
+    async (ctx) => await ctx.conversation.enter("handlePayment")
+  );
+  bot.callbackQuery("checkTransaction", checkTransaction)
 
   bot.command(
     "help",
